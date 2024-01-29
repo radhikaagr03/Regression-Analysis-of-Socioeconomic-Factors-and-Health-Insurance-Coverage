@@ -1,0 +1,417 @@
+---
+title: "Project"
+author: "Radhika Agarwal, Maia Payne, Victor Tolulope Akangbe"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+---
+
+# Abstract: 
+
+The regression analysis that our group did research on the relationship between socioeconomic factors and health insurance coverage in the United States. The model will include the response variable, and the results will be used to determine which factors are significantly associated with health insurance coverage. The results of the analysis can be used to inform policy decisions to increase health insurance coverage across the United States.
+
+# Introduction: 
+
+We are looking at if people with higher incomes will have health insurance and if gender would have an effect on a person having health insurance.There have been recent efforts have been made to address many different issues/ opportunities in health insurance within many of the different states. Many policy changes and initiatives have aimed to increase people with insurance (Smith, Horneffer, & O’Connell, 2022). Analyzing the data on health insurance can provide insight into understanding the socioeconomic factors that influence health care coverage in the United States. 
+
+There have been several studies conducted to determine the relationship between a person's wage and their health coverage status. The purpose of this research is to summarize the current state of health coverage within the respondent level. Many other studies have shown that there is a strong correlation between a person's wages and their likelihood of having health coverage. Dickman et al. (2017) this study found that the rising insurance premiums for employer -sponsored private coverage have broke down wage gains for middle-class Americans. As well as Kuroki (2022) article investigated the effects of minimum wage hikes on the proportion of uninsured people between 2008 and 2018. The effects appear to be the result of minimum wage increases that occurred following the implementation of the Affordable Care Act (ACA) went into effect in 2014, implying that higher minimum wages, combined with federal subsidies for the ACA marketplace and the individual mandate, may have contributed to a decrease in the uninsured rate. The last study we looked at was by Stinson (2003), which investigated a combination model of salaries, job termination risk, and the likelihood of having employer-provided health insurance.
+
+The response variable will be health insurance coverage. This will be measured as a (yes/no) variable based on whether or not the individual has health insurance.
+
+Health Coverage = β0  + β1 (Race) + β2 (sex) + β3 (wages) + β4 (age) + β5 (Persons Per Family) + β6 (Citizen) + β7 (Disability) + β8 (State)
+
+
+### Loading necessary libraries
+
+```{r echo = FALSE}
+library(tidyverse)
+library(DescTools)
+library(dplyr)
+library(ggplot2)
+library(vcd)
+library(readxl)
+library(psych)
+library(writexl)
+library(survey)
+library(GGally)
+```
+
+### Reading the CSV file 
+
+```{r echo = FALSE}
+data = read_csv("final_health_ins_data.csv")
+```
+
+# Data:
+
+The data that we looked at we gather from the respondent-level Census data from the United States Census Bureau website (https://data.census.gov/mdat/#/search?ds=ACSPUMS1Y2021&vv=NPF,AGEP,WAGP&cv=PUBCOV,PRIVCOV,HICOV,SEX,RAC1P&rv=POWSP,CIT,DIS,ucgid&g=0400000US01,02,04,05,06,08,09,10,11,12,13,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,44,45,46,47,48,49,50,51,53,54,55,56) 
+This is the link to the micro data table from the Census Bureau using ACS 1-Year Estimates Public Use Microdata Sample (2021). 
+
+With this data we are able to examine the affects of a person having a health insurance in the United States. 
+
+Our data looks like this:
+•	Disability - Whether the person has a disability or not. (coded as 0 and 1)
+•	Race - Whether the person is White. (coded as 0 and 1)
+•	Sex - Female or Male (coded as 0 and 1)
+•	Log of Wages of past 12 months (Numeric)
+•	Age - It ranges from 16-95 years. (Numeric)
+•	Number of persons in family - (Numeric)
+•	US Citizenship status - Whether a person is a US citizen. (coded as 0 and 1)
+•	State - It comprises of all the US States (coded as numbers)
+•	Public Health Insurance- Whether a person has a public  health insurance. (coded as 0 and 1)
+•	Private Health Insurance -Whether a person has a private health insurance. (coded as 0 and 1)
+•	Health Insurance - Whether a person has a health insurance. (coded as 0 and 1)
+
+
+### Cleaning the Data 
+
+Before we dive into analysis, we had to clean the data.
+•	Converted the race attribute to people who are white as 1 and 0 represents all other races combined
+•	The dataset consists of -1 and NA values in Wages, which we have removed from out data.
+•	Converted the citizen attribute to people who are citizen of US and not
+•	Coded all values in attributes from 2 to 0 for better understanding. 
+•	Removed Non US states from the States attribute.
+
+```{r}
+data$Race[data$Race == 2 |data$Race == 3 | data$Race == 4 |data$Race == 5 | data$Race == 6 |data$Race == 7 | data$Race == 8 |data$Race == 9] = 0
+
+data$Wages[data$Wages == -1] = NA
+data = data %>% drop_na(Wages)
+
+data$Citizen[data$Citizen == 1 | data$Citizen == 2 | data$Citizen == 3 | data$Citizen == 4 ] = 1
+
+data$Citizen[data$Citizen == 5 ] = 0
+
+data$Sex[data$Sex == 2 ] = 0
+data$Sex[data$Sex == 1 ] = 1
+
+
+data$HealthIns[data$HealthIns == 2 ] = 0
+data$PublicHealthIns[data$PublicHealthIns == 2 ] = 0
+data$PrivateHealthIns[data$PrivateHealthIns == 2 ] = 0
+
+data$Disability[data$Disability == 2 ] = 0
+data$Disability[data$Disability == 1 ] = 1
+
+data <- subset(data, !(State %in% c('N',72,166,251,254,301,303,399,555)))
+
+```
+
+### Logging Wages
+
+Log transformed Wages to help with unequal variances. 
+
+```{r}
+data = data %>% mutate(Wages_log = log10(Wages))
+data = data[is.finite(data$Wages_log),]
+```
+
+### Summarizing the data
+
+```{r}
+summary(data)
+```
+
+The summary shows the descriptive statistics for the variables in the data set, which includes the measures of minimum, maximum, mean, and median as well as the quartiles. This information is relevant because it provides a  comprehensive overview of the data set. 
+
+The Summary of the data is showing that the PersonsPerFamily: Minimum number of persons per family is 1.0 and the maximum number is 20.0. This variable is relevant because it represents the number of people in each family unit in the sample, which could be used to analyze family demographics when researching. 
+
+The data also shows that the min age is 16 and the max is 95 which is relevant because it represents the age of each of the person in the sample. 
+
+The minimum wage is $4, maximum wage is $787,000. This variable is relevant because it represents the income earned by each person in the sample.
+
+PublicHealthIns, PrivateHealthIns, HealthIns, all are represented in as either 0 being no insurance and 1 being they have health insurance. These variables are relevant because it represents whether each person in the sample has any form of health insurance, which could be used to analyze health insurance coverage and access to healthcare. 
+
+Sex, Race, Citizen, and Disability have either value 0 or 1. These are all important because they could be used to analyze gender, race, disability, and citizenship demographics based on a response of yes or no.  
+
+Lastly, with the wages_log: Minimum value is 0.6021, maximum value is 5.8960. This variable is relevant because it represents the logarithm of wages earned by each person in the sample and could be used to analyze income distribution.
+
+
+# Univariate Analysis
+
+### Percentage of people having sex as a Male or a Female
+
+```{r}
+ggplot(data, aes(x=Sex)) +
+  geom_bar(fill="steelblue")+
+  geom_text(stat='count',aes(label = paste0(round(..count../sum(..count..) * 100,2), "%")),vjust=0)+
+  theme_minimal()
+```
+
+As we can see at the histogram, there are 47.85% female and 52.15% male in our data set. Although these percentages are unequal, it does not significantly impact on the analysis as the difference is minimal. 
+
+### Percentage of people with a disability
+
+```{r}
+ggplot(data, aes(x=Disability)) +
+  geom_bar(fill="steelblue")+
+  geom_text(stat='count',aes(label = paste0(round(..count../sum(..count..) * 100,2), "%")),vjust=0) +
+  theme_minimal()
+```
+
+The histogram illustrates that 6.81% of the population have a disability, whereas 93.19% individuals do not have a disability. The graph displays a significant difference between the two categories.
+
+### Percentage of people who are US citizen
+
+```{r}
+ggplot(data, aes(x=Citizen)) +
+  geom_bar(fill="steelblue")+
+  geom_text(stat='count',aes(label = paste0(round(..count../sum(..count..) * 100,2), "%")),vjust=0) +
+  theme_minimal()
+```
+
+The majority of the individuals involved identified themselves as American citizens (93.51%), and the remaining individuals (6.49%) identified themselves as foreigners.
+
+### Percentage of people per family
+
+```{r}
+ggplot(data, aes(x=PersonsPerFamily)) +
+  geom_bar(fill="steelblue")+
+  geom_text(stat='count',aes(label = paste0(round(..count../sum(..count..) * 100,2), "%")),vjust=0) +
+  theme_minimal()
+```
+
+
+### Removing outliers from PersonsPerFamily
+
+```{r}
+data <- subset(data, !(PersonsPerFamily %in% c(9,10,11,12,13,14,15,16,17,18,19,20)))
+```
+
+### Percentage of people per family after removing outliers
+
+```{r}
+#Number of persons per family
+ggplot(data, aes(x=PersonsPerFamily)) +
+  geom_bar(fill="steelblue")+
+  geom_text(stat='count',aes(label = paste0(round(..count../sum(..count..) * 100,2), "%")),vjust=0) +
+  theme_minimal()
+```
+
+The graph indicates that the family size of 2 people is the most common within our data set.  
+
+### Percentage of White People
+
+```{r}
+ggplot(data, aes(x=Race)) +
+  geom_bar(fill="steelblue")+
+  geom_text(stat='count',aes(label = paste0(round(..count../sum(..count..) * 100,2), "%")),vjust=0) +
+  theme_minimal()
+```
+
+It can be seen that there are more individuals that identify as white 67.22%  compared to those who identify as a person of color 32.78%.
+
+# Bivariate Analysis On Categorical Variables
+
+### Mosaic plot between Sex and Health Insurance
+
+```{r}
+mosaic(~Sex+HealthIns, data = data)
+```
+
+The mosaic plot above shows the correlation between an individual’s biological sex and health insurance to test whether or not sex is a factor that determines if an individual has health insurance. Based on the results of the mosaic plot, sex does not play a role in determining if an individual has health insurance. The tiles are roughly the same size and shape. 
+
+### Mosaic plot between Race and Health Insurance
+
+```{r}
+mosaic(~Race+HealthIns, data = data)
+```
+
+The plot shows that the tiles are roughly the same size and shape
+Indicating that there  is not much effect of race on a person having a Health Insurance. 
+
+### Mosaic plot between Citizen and Health Insurance
+
+```{r}
+mosaic(~Citizen+HealthIns, data = data)
+```
+
+The graph shown above indicates that the tiles are not the same size or shape. It tells us that if a person is a U.S. citizen, they are more likely to have health insurance than non-U.S. citizens. 
+
+### Mosaic plot between Persons per Family and Health Insurance
+
+```{r}
+mosaic(~PersonsPerFamily+HealthIns, data = data)
+```       
+
+The plot is between Persons per family and Health Insurance, we see that mostly tiles align to each other, telling us that persons per family does not have much effect on health insurance. If we look closely we can say that if the number of persons in a family is more than 4, chances of them not having health insurance increases. 
+
+### Mosaic plot between Public Health Insurance and Private Health Insurance
+
+```{r}
+mosaic(~PublicHealthIns+PrivateHealthIns, data = data)
+```
+
+
+# Bivariate Analysis on Continuous Variables
+
+### Correlation plot between Log of Wages, Health Insurance and Age
+
+```{r}
+ggpairs(data[, c("Age", "Wages_log", "HealthIns")], columns = 1:3,
+        upper = list(continuous = wrap("cor", size = 3)))
+```
+
+### Scatter plot with linear regression line fit between Age and Health Insurance
+ 
+```{r}
+ggplot(data, aes(x=Age, y=Wages_log)) +
+  geom_smooth(method="lm", se=FALSE) +
+  labs(title="Age vs. log of Wages", x="Age", y="Log of Wages")
+```
+
+This plot shows that as the age increases a person wages also increases linearly
+
+### Scatter plot with linear regression line fit between Age and Health Insurance
+
+```{r}
+ggplot(data, aes(x=Age, y=HealthIns)) +
+  geom_point() +
+  geom_smooth(method="lm", se=FALSE) +
+  labs(title="Age vs. Health Insurance", x="Age", y="Health Insurance (0=No, 1=Yes)")
+```
+
+This plot shows that with increase in Age, the probability of having a health insurance increases slightly.
+
+### Scatter plot with linear regression line fit between log of Wages and Health Insurance
+
+```{r}
+ggplot(data, aes(x=Wages_log, y=HealthIns)) +
+  geom_point() +
+  geom_smooth(method="lm", se=FALSE) +
+  labs(title="Log Of Wages vs. Health Insurance", x="Log Of Wages", y="Health Insurance (0=No, 1=Yes)")
+```
+
+This plot shows that there is a linear increase trend between log of Wages and Health Insurance 
+
+### Percentage of people per State
+
+```{r fig.width = 10}
+ggplot(data, aes(x=State)) +
+  geom_bar(fill="steelblue")+
+  geom_text(stat='count',aes(label = paste0(round(..count../sum(..count..) * 100,2), "%")),vjust=0) +
+  theme_bw()
+```
+
+This plot shows the population percentage of each state.
+
+### Percentage of people per State with and without health insurance
+
+```{r fig.width = 10, fig.height=20}
+ggplot(data, aes(x=State, fill=HealthIns)) +
+  geom_bar(fill="steelblue") +
+  geom_text(stat='count',aes(label = paste0(round(..count../sum(..count..) * 100,2), "%")),vjust=0) +
+  facet_grid(data$HealthIns) +
+  scale_y_continuous(limits = c(0, 50000)) +
+  theme_bw()
+```
+
+As we can look at this plot: 
+•	Approximately out of 11.59% of the people living in California, 10.83% people have an Health Insurance.
+•	If we look at Texas, out of 7.7% population, 6.51% have an health Insurance.
+•	New york has a population of 6.34% of which 6.04% have a Health Insurance
+•	Florida has a population of 5.91% of which 5.23% have a Health Insurance
+•	The lowest population is of Wyoming State of 0.19% overall.
+
+### Correlation plot between all the variables
+
+```{r}
+corrdata = with(data,data.frame(HealthIns, PrivateHealthIns, PublicHealthIns, Age, Wages_log, Race, Citizen, Sex, Disability, PersonsPerFamily))
+pairs.panels(corrdata,lm=T)
+```
+
+Now let’s look at the correlation matrix:
+•	We can see that health insurance and private health insurance are highly correlated with a value of 0.64.
+•	The race and citizen correlation is 0.28
+•	The age and wages_log correlation is 0.29
+•	Health insurance and citizen correlation is 0.18.
+
+So now we will try to build a linear regression model based on the all analysis we have done so far.
+
+### Dividing Age
+
+The code re-codes the Age variable into three categories based on age ranges. This can be useful for simplifying the data and creating categories that are more meaningful or easier to interpret. 
+
+```{r}
+data$Age[data$Age <= 30 ] = 1
+data$Age[data$Age > 30 & data$Age <=60 ] = 2
+data$Age[data$Age > 60 ] = 3
+```
+
+### Linear Regression on the Base Model
+
+```{r}
+basemodel = lm(HealthIns ~ PersonsPerFamily+as.factor(Age)+Wages_log+Sex+Race+Citizen+Disability+as.factor(State), data = data)
+summary(basemodel)
+```
+
+This is the first model that we ran for linear regression model on all are independent variables:
+
+•	The intercept represents the predicted value of the dependent variable when all independent variables are equal to zero. In this case, the intercept is not meaningful since it is highly unlikely that all the independent variables would be equal to zero.
+
+•	The coefficient estimate for "PersonsPerFamily" is -0.0023813, which means that, holding all other predictors constant, a one-unit increase in the number of people in the family is associated with a decrease of 0.0023813 in the likelihood of having health insurance.
+
+•	R square (R^2) indicates the proportion of the variation in the HealthIns variable that is explained by the independent variables included in the model. Here the R^2 value is 0.06855, which means 6% variation in health insurance is explained by  all the independent variables.
+
+•	F-Statistic: It indicates whether the model as a whole is significant in explaining the variation in the dependent variable. Here F-statistic is 524.6, which is very large, and the p-value is very small (less than 2.2e-16), providing strong evidence that the model is significant.
+
+### Modifications to the Linear Model
+
+After running the full linear regression model, we can see that:
+
+•	Disability variable is insignificant and the coefficient is very low of 0.0022907, so we can remove this variable from our analysis.
+
+•	PersonPerFamily variable also has very low coefficient of -0.0023813, so we can remove it as well.
+
+```{r}
+updatedModel_1 = lm(HealthIns ~ as.factor(Age)+Wages_log+Sex+Race+Citizen+as.factor(State), data = data)
+summary(updatedModel_1)
+```
+
+We can see after removing those variables, the adjusted r-square value has increased to 0.06835, which we can say is a better fit.
+
+### Further Modifications to the Linear Model
+
+After running the updated linear regression model, we can do the following to increase accuracy:
+•	As Age increase, we saw that the wage increases. So it would be better to add an interaction between the variables. 
+
+•	Similarly, for Race and Citizenship there is a strong relationship, so we added an interaction. 
+
+```{r}
+updatedModel_2 = lm(HealthIns ~ (as.factor(Age)*Wages_log)+Sex+(Race*Citizen)+as.factor(State), data = data)
+summary(updatedModel_1)
+```
+
+We can see after adding interactions between those variables, the adjusted r-square value has increased to 0.07619, which we can say is a better fit.
+
+### Interaction model with PrivateHealthIns as the response variable
+
+```{r}
+updatedModel_3 = lm(PrivateHealthIns ~ (as.factor(Age)*Wages_log)+Sex+(Race*Citizen)+as.factor(State), data = data)
+summary(updatedModel_3)
+```
+
+In this we can see the r-squared increase to 0.1092.
+
+### Interaction model with PublicHealthIns as the response variable
+
+```{r}
+updatedModel_4 = lm(PublicHealthIns ~ (as.factor(Age)*Wages_log)+Sex+(Race*Citizen)+as.factor(State), data = data)
+summary(updatedModel_4)
+```
+
+In this we can see the r-squared increase to 0.19
+
+We can say that this model best fits with Public Health insurance. 
+
+# Results:
+
+
+
+# Conclusion: 
+
+While the variables are helpful information to know when trying to predict health coverage, we can conclude that, the variables we used are not enough to produce an accurate prediction and for further our analysis. 
+
+We were trying to indicate if a person with higher incomes will have health insurance and if gender would have an effect on a person having health insurance. Yes, this data set was helpful but there were limitations to the accuracy of our models. 
+
+For more accuracy, we would likely need to include the surveys weights which might help in making the model more accurate and use different modeling approaches like logistic regression or a decision tree for better accuracy. 
